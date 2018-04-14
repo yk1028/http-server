@@ -1,15 +1,14 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <iostream>
 #include <unistd.h>
 #include <signal.h>
 #include <sys/wait.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include "web.h"
 
-#define BUF_SIZE 30
-void error_handling(char *message);
+void error_handling(string message);
 void read_childproc(int sig);
+void exit_proc(int sig);
 
 int main(int argc, char *argv[])
 {
@@ -18,18 +17,22 @@ int main(int argc, char *argv[])
 
     pid_t pid;
     struct sigaction act;
+    struct sigaction sigIntHandler;
     socklen_t adr_sz;
-    int str_len, state;
-    char buf[BUF_SIZE];
     if(argc != 2) {
-        printf("Usage : %s <port>\n", argv[0]);
+        std::cout << "Usage : " << argv[0] << " <port>\n";
         exit(1);
     }
 
     act.sa_handler = read_childproc;
     sigemptyset(&act.sa_mask);
     act.sa_flags = 0;
-    state=sigaction(SIGCHLD, &act, 0);
+    sigaction(SIGCHLD, &act, 0);
+
+    sigIntHandler.sa_handler = exit_proc;
+    sigemptyset(&sigIntHandler.sa_mask);
+    sigIntHandler.sa_flags = 0;
+    sigaction(SIGINT, &sigIntHandler, NULL);
 
     serv_sock = socket(PF_INET, SOCK_STREAM, 0);
     memset(&serv_adr, 0, sizeof(serv_adr));
@@ -42,6 +45,11 @@ int main(int argc, char *argv[])
     if(listen(serv_sock, 5)==-1)
         error_handling("listen() error");
 
+    std::cout << "myserver is running... \n"
+            << "application starting on http://localhost:" << argv[1]<< "\nlistening on tcp://"
+              << inet_ntoa(serv_adr.sin_addr) << ":" << argv[1] << "\n"
+            << "Use Ctrl-C to stop\n";
+
     while(1)
     {
         adr_sz=sizeof(clnt_adr);
@@ -49,7 +57,7 @@ int main(int argc, char *argv[])
         if(clnt_sock == -1)
             continue;
         else
-            puts("new client connected...");
+            std::cout << "new client connected...\n";
         pid = fork();
         if(pid == -1)
         {
@@ -59,12 +67,11 @@ int main(int argc, char *argv[])
         if(pid == 0)
         {
             close(serv_sock);
-            while((str_len=read(clnt_sock, buf, BUF_SIZE))!=0) {
-                printf(buf);
-            }
+
+            Web web(clnt_sock); //web server
 
             close(clnt_sock);
-            puts("client disconnected...");
+            std::cout << "client disconnected...\n";
             return 0;
         }
         else
@@ -79,11 +86,15 @@ void read_childproc(int sig)
     pid_t pid;
     int status;
     pid = waitpid(-1, &status, WNOHANG);
-    printf("removed proc id: %d \n", pid);
+    std::cout << "removed proc id: "<< pid << "\n";
 }
-void error_handling(char *message)
+void exit_proc(int sig){
+    std::cout << "\nGoodbye!\nExiting\n";
+    exit(1);
+}
+
+void error_handling(string message)
 {
-    fputs(message, stderr);
-    fputc('\n', stderr);
+    std::cerr << message << "\n";
     exit(1);
 }
