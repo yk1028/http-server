@@ -7,11 +7,12 @@
  - Target: x86_64-apple-darwin17.4.0
  - Thread model: posix
  
-    
-    $ git clone https://github.com/yk1028/http-server
-    $ g++ -c http-server.cpp requestinfo.cpp web.cpp
-    $ g++ http-server.o requestinfo.o web.o
-    $ ./a.out <port>
+```bash
+$ git clone https://github.com/yk1028/http-server
+$ g++ -c http-server.cpp requestinfo.cpp web.cpp
+$ g++ http-server.o requestinfo.o web.o
+$ ./a.out <port>
+```
     
 ## Features
  - serve static file over HTTP
